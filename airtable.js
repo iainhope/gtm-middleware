@@ -34,4 +34,10 @@ const getTasksForGoal = async (goal_id) => {
   }
 };
 
-module.exports = { getTasksForGoal };
+const getTasksForGoal = async (goal_id) => {
+  ...
+};
+
+module.exports = {
+  getTasksForGoal: getTasksForGoal
+};
