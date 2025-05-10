@@ -1,42 +1,34 @@
-const express = require("express");
-const fs = require("fs");
-const { getTasksForGoal } = require("./airtable");
+const axios = require("axios");
 
-const tasksData = JSON.parse(fs.readFileSync("./tasks.json", "utf-8"));
+const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
+const BASE_ID = "appZl7uUy4NeWQ0Ho";
+const TASKS_TABLE_NAME = "tasks";
+const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/${TASKS_TABLE_NAME}`;
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  next();
-});
-
-// ✅ Step 1: Get task IDs from a goal
-app.post("/getTaskIDsForGoal", async (req, res) => {
-  const { goal_id } = req.body;
-  if (!goal_id) return res.status(400).json({ error: "Missing goal_id" });
-
-  const task_ids = await getTasksForGoal(goal_id);
-  if (task_ids === null) return res.status(500).json({ error: "Failed to fetch tasks from Airtable" });
-
-  res.json({ task_ids });
-});
-
-// ✅ Step 2: Get task labels from IDs
-app.post("/getTaskLabels", (req, res) => {
+app.post("/getTaskLabels", async (req, res) => {
   const { task_ids } = req.body;
-  if (!task_ids || !Array.isArray(task_ids)) return res.status(400).json({ error: "Missing or invalid task_ids" });
+  if (!Array.isArray(task_ids)) {
+    return res.status(400).json({ error: "Invalid or missing task_ids" });
+  }
 
-  const labels = tasksData
-    .filter(task => task_ids.includes(task.task_id))
-    .map(task => task.task_label);
+  try {
+    const filter = `OR(${task_ids.map(id => `{ID} = "${id}"`).join(",")})`;
 
-  res.json({ task_labels: labels });
-});
+    const response = await axios.get(TASKS_URL, {
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_TOKEN}`
+      },
+      params: {
+        filterByFormula: filter,
+        fields: ["Title"], // ✅ this is your task label field
+        pageSize: 100
+      }
+    });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    const task_labels = response.data.records.map(r => r.fields.Title);
+    res.json({ task_labels });
+  } catch (error) {
+    console.error("🔥 Airtable task label error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to fetch task labels from Airtable" });
+  }
 });
