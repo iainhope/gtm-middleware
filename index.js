@@ -10,16 +10,20 @@ app.use((req, res, next) => {
   next();
 });
 
-const goalsData      = JSON.parse(fs.readFileSync("./goals.json", "utf-8"));
-const tasksData      = JSON.parse(fs.readFileSync("./tasks.json", "utf-8"));
-const methodsData    = JSON.parse(fs.readFileSync("./methods.json", "utf-8"));
-const modalitiesData = JSON.parse(fs.readFileSync("./modalities.json", "utf-8"));
-
-app.post("/getTaskIDsForGoal", (req, res) => {
+app.post("/getTaskIDsForGoal", async (req, res) => {
   const { goal_id } = req.body;
-  const goal = goalsData.find(g => g.goal_id === goal_id);
-  if (!goal) return res.status(404).json({ error: "Goal not found" });
-  res.json({ task_ids: goal.linked_task_ids });
+
+  if (!goal_id) {
+    return res.status(400).json({ error: "Missing goal_id" });
+  }
+
+  const task_ids = await getTasksForGoal(goal_id);
+
+  if (task_ids === null) {
+    return res.status(500).json({ error: "Failed to fetch tasks from Airtable" });
+  }
+
+  res.json({ task_ids });
 });
 
 app.post("/getTaskLabels", (req, res) => {
