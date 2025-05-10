@@ -1,0 +1,12 @@
+{
+  "name": "gtm-middleware",
+  "version": "1.0.0",
+  "description": "Middleware for Goal > Task > Method Builder",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
