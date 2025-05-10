@@ -6,7 +6,7 @@ const BASE_ID = "GTMdb";
 const TABLE_NAME = "Goals";
 const FIELD_NAME = "ID (from Task Links)";
 const AIRTABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`;
-
+const formula = `{ID} = "${goal_id}"`;
 const getTasksForGoal = async (goal_id) => {
   try {
     const formula = `{goal_id} = "${goal_id}"`;
