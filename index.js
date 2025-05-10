@@ -1,6 +1,9 @@
 const express = require("express");
-const { getTasksForGoal } = require("./airtable");
 const fs = require("fs");
+const { getTasksForGoal } = require("./airtable");
+
+const tasksData = JSON.parse(fs.readFileSync("./tasks.json", "utf-8"));
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -11,62 +14,27 @@ app.use((req, res, next) => {
   next();
 });
 
+// ✅ Step 1: Get task IDs from a goal
 app.post("/getTaskIDsForGoal", async (req, res) => {
   const { goal_id } = req.body;
-
-  if (!goal_id) {
-    return res.status(400).json({ error: "Missing goal_id" });
-  }
+  if (!goal_id) return res.status(400).json({ error: "Missing goal_id" });
 
   const task_ids = await getTasksForGoal(goal_id);
-
-  if (task_ids === null) {
-    return res.status(500).json({ error: "Failed to fetch tasks from Airtable" });
-  }
+  if (task_ids === null) return res.status(500).json({ error: "Failed to fetch tasks from Airtable" });
 
   res.json({ task_ids });
 });
 
+// ✅ Step 2: Get task labels from IDs
 app.post("/getTaskLabels", (req, res) => {
   const { task_ids } = req.body;
+  if (!task_ids || !Array.isArray(task_ids)) return res.status(400).json({ error: "Missing or invalid task_ids" });
+
   const labels = tasksData
-    .filter(t => task_ids.includes(t.task_id))
-    .map(t => t.task_label);
+    .filter(task => task_ids.includes(task.task_id))
+    .map(task => task.task_label);
+
   res.json({ task_labels: labels });
-});
-
-app.post("/getTaskIDFromLabel", (req, res) => {
-  const { task_ids, task_labels, selected_label } = req.body;
-  const idx = task_labels.indexOf(selected_label);
-  if (idx === -1) return res.status(404).json({ error: "Label not found" });
-  res.json({ task_id: task_ids[idx] });
-});
-
-app.post("/getMethodIDsForTask", (req, res) => {
-  const { task_id } = req.body;
-  const task = tasksData.find(t => t.task_id === task_id);
-  if (!task) return res.status(404).json({ error: "Task not found" });
-  res.json({ method_ids: task.linked_method_ids });
-});
-
-app.post("/getMethodLabels", (req, res) => {
-  const { method_ids } = req.body;
-  const labels = methodsData
-    .filter(m => method_ids.includes(m.method_id))
-    .map(m => m.method_label);
-  res.json({ method_labels: labels });
-});
-
-app.post("/getMethodDetails", (req, res) => {
-  const { method_id } = req.body;
-  const method = methodsData.find(m => m.method_id === method_id);
-  if (!method) return res.status(404).json({ error: "Method not found" });
-  const modality = modalitiesData.find(md => md.modality_id === method.modality_id);
-  res.json({
-    method_label: method.method_label,
-    modality: modality ? modality.modality_label : null,
-    reference: method.primary_reference || null
-  });
 });
 
 app.listen(PORT, () => {
