@@ -171,17 +171,18 @@ app.post("/getMethodIDsForTask", async (req, res) => {
   }
 });
 
-// ✅ Route 5 (Simple): Get Method Labels from Method IDs (no modality)
+// ✅ Route 5: Get Method Labels from Method IDs (Landbot-compatible response)
 app.post("/getMethodLabels", async (req, res) => {
   try {
     let { method_ids } = req.body;
     console.log("📥 Received method_ids:", method_ids);
 
+    // Parse stringified arrays if needed
     if (typeof method_ids === "string") {
       try {
         method_ids = JSON.parse(method_ids);
       } catch (e) {
-        return res.status(400).json({ error: "method_ids must be a valid array or stringified array" });
+        return res.status(400).json({ error: "method_ids must be a valid JSON array or stringified array" });
       }
     }
 
@@ -190,7 +191,7 @@ app.post("/getMethodLabels", async (req, res) => {
     }
 
     if (method_ids.length === 0) {
-      return res.json({ method_labels_array: [] });
+      return res.json({ method_labels_array: [], method_labels: [] });
     }
 
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
@@ -201,15 +202,20 @@ app.post("/getMethodLabels", async (req, res) => {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
         filterByFormula: formula,
-        fields: ["Title", "ID"],
+        fields: ["Title", "ID"], // Make sure this matches Airtable exactly (capital "T")
         pageSize: 100
       }
     });
 
-    const method_labels_array = response.data.records.map(rec => rec.fields.Title || "[No title]");
-    console.log("🎯 Final method_labels_array:", method_labels_array);
+    const method_labels = response.data.records.map(rec => rec.fields.Title || "[Missing label]");
+    console.log("🎯 Final method_labels_array:", method_labels);
 
-    res.json({ method_labels_array });
+    // Return both formats for Landbot compatibility
+    res.json({
+      method_labels_array: method_labels,
+      method_labels: method_labels
+    });
+
   } catch (error) {
     console.error("🔥 Method label fetch error:", error.response?.data || error.message);
     res.status(500).json({ error: "Failed to fetch method labels" });
