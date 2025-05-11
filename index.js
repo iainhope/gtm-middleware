@@ -119,7 +119,7 @@ app.post("/getMethodsForTask", async (req, res) => {
     const taskResponse = await axios.get(TASKS_URL, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
-        filterByFormula: `{Title} = "${task_label}"`,
+        filterByFormula: `SEARCH("${task_label}", {Title})`,
         fields: ["ID"],
         pageSize: 1
       }
