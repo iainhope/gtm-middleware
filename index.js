@@ -136,7 +136,7 @@ app.post("/getMethodsForTask", async (req, res) => {
     // Step 2: Use Task ID to find Methods
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
 
-    const methodFormula = `FIND("${taskID}", SUBSTITUTE(ARRAYJOIN({ID (from Task Links)}, ","), " ", ""))`;
+    const methodFormula = `SEARCH("${taskID}", SUBSTITUTE(ARRAYJOIN({ID (from Task Links)}, ","), " ", ""))`;
     console.log("🔎 Matching methods with formula:", methodFormula);
 
     const methodResponse = await axios.get(METHODS_URL, {
