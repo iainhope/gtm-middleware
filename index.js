@@ -140,7 +140,7 @@ app.post("/getTaskIDForLabel", async (req, res) => {
   }
 });
 
-  // ✅ Route 4: Get Method IDs for a Task ID
+// ✅ Route 4: Get Method IDs for a Task ID
 app.post("/getMethodIDsForTask", async (req, res) => {
   try {
     const { task_id } = req.body;
@@ -163,14 +163,18 @@ app.post("/getMethodIDsForTask", async (req, res) => {
 
     const taskRecord = taskResponse.data.records[0];
     if (!taskRecord || !taskRecord.fields.methods_flat) {
-      return res.json({ method_ids: [] });
+      return res.json({ matched_method_ids_array: [] });
     }
 
     const rawMethodIDs = taskRecord.fields.methods_flat;
     const method_ids = rawMethodIDs.split(",").map(id => id.trim());
-    console.log("🔗 Method IDs:", method_ids);
 
-    res.json({ method_ids });
+    // ✅ Append fallback option
+    method_ids.push("None of these seem right");
+
+    console.log("🔗 Final matched_method_ids_array:", method_ids);
+    res.json({ matched_method_ids_array: method_ids });
+
   } catch (error) {
     console.error("🔥 Method ID fetch error:", error.message);
     res.status(500).json({ error: "Failed to fetch method IDs from Airtable" });
