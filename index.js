@@ -171,13 +171,13 @@ app.post("/getMethodIDsForTask", async (req, res) => {
   }
 });
 
-// ✅ Route 5: Get Method Labels and Modalities (from Method IDs)
+// ✅ Route 5: Get Method Labels and Modality for Display
 app.post("/getMethodLabels", async (req, res) => {
   try {
     let { method_ids } = req.body;
     console.log("📥 Received method_ids:", method_ids);
 
-    // 🔁 Parse if coming in as a stringified array
+    // 🔁 Parse if stringified array from Landbot
     if (typeof method_ids === "string") {
       try {
         method_ids = JSON.parse(method_ids);
@@ -190,51 +190,48 @@ app.post("/getMethodLabels", async (req, res) => {
       return res.status(400).json({ error: "method_ids must be an array" });
     }
 
-    // 🔎 Build formula to match multiple method IDs
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
-    const methodFormula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
-    console.log("🧪 Method formula:", methodFormula);
+    const formula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
+    console.log("🧪 Method formula:", formula);
 
-    // 🔍 Get method records
-    const response = await axios.get(METHODS_URL, {
+    const methodResponse = await axios.get(METHODS_URL, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
-        filterByFormula: methodFormula,
-        fields: ["ID", "Title", "To link to Reference id"],
+        filterByFormula: formula,
+        fields: ["title", "To link to Reference id"],
         pageSize: 100
       }
     });
 
-    // 🔧 Format with hardcoded modality labels
-    const methods = response.data.records.map((record) => {
-      const label = record.fields.Title;
-      const ref = record.fields["To link to Reference id"];
-      let modality = "";
+    const method_labels = methodResponse.data.records.map((rec) => {
+      const label = rec.fields.title;
+      const ref = rec.fields["To link to Reference id"];
 
+      let drawn_from = "";
       switch (ref) {
         case "REF001":
-          modality = "Drawn from Person-Centred Therapy";
+          drawn_from = "Person-Centred Therapy";
           break;
         case "REF002":
-          modality = "Drawn from Cognitive Behavioural Therapy (CBT)";
+          drawn_from = "Cognitive Behavioural Therapy";
           break;
         case "REF003":
-          modality = "Drawn from Narrative Therapy";
+          drawn_from = "Narrative Therapy";
           break;
         case "REF004":
-          modality = "Drawn from Acceptance and Commitment Therapy (ACT)";
+          drawn_from = "Acceptance and Commitment Therapy";
           break;
         default:
-          modality = "Modality reference not found";
+          drawn_from = "an unknown modality";
       }
 
-      return `${label} · ${modality}`;
+      return `${label} · Drawn from ${drawn_from}`;
     });
 
     res.json({ method_labels });
   } catch (error) {
     console.error("🔥 Method label fetch error:", error.message);
-    res.status(500).json({ error: "Failed to fetch method labels" });
+    res.status(500).json({ error: "Failed to fetch method labels from Airtable" });
   }
 });
 
