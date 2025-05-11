@@ -171,18 +171,17 @@ app.post("/getMethodIDsForTask", async (req, res) => {
   }
 });
 
-// ✅ Route 5: Get Method Labels from Method IDs (Airtable case sensitivity fix)
+// ✅ Route 5 (Simple): Get Method Labels from Method IDs (no modality)
 app.post("/getMethodLabels", async (req, res) => {
   try {
     let { method_ids } = req.body;
     console.log("📥 Received method_ids:", method_ids);
 
-    // Support stringified arrays from Landbot
     if (typeof method_ids === "string") {
       try {
         method_ids = JSON.parse(method_ids);
       } catch (e) {
-        return res.status(400).json({ error: "method_ids must be a valid JSON array or stringified array" });
+        return res.status(400).json({ error: "method_ids must be a valid array or stringified array" });
       }
     }
 
@@ -195,26 +194,22 @@ app.post("/getMethodLabels", async (req, res) => {
     }
 
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
-
-    const formulaParts = method_ids.map(id => `{ID} = "${id}"`);
-    const formula = `OR(${formulaParts.join(",")})`;
+    const formula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
     console.log("🧪 Airtable formula:", formula);
 
     const response = await axios.get(METHODS_URL, {
-      headers: {
-        Authorization: `Bearer ${AIRTABLE_TOKEN}`
-      },
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
         filterByFormula: formula,
-        fields: ["Title", "ID"],  // ← case-sensitive fix
+        fields: ["Title", "ID"],
         pageSize: 100
       }
     });
 
-    const method_labels = response.data.records.map(rec => rec.fields.Title || "[Missing label]");
-    console.log("🎯 Final method_labels_array:", method_labels);
-    res.json({ method_labels_array: method_labels });
+    const method_labels_array = response.data.records.map(rec => rec.fields.Title || "[No title]");
+    console.log("🎯 Final method_labels_array:", method_labels_array);
 
+    res.json({ method_labels_array });
   } catch (error) {
     console.error("🔥 Method label fetch error:", error.response?.data || error.message);
     res.status(500).json({ error: "Failed to fetch method labels" });
