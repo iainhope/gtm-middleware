@@ -150,7 +150,6 @@ app.post("/getMethodIDsForTask", async (req, res) => {
       return res.status(400).json({ error: "task_id must be a string" });
     }
 
-    // Step 1: Look up the Task row by ID
     const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
     const taskResponse = await axios.get(TASKS_URL, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
@@ -169,9 +168,6 @@ app.post("/getMethodIDsForTask", async (req, res) => {
     const rawMethodIDs = taskRecord.fields.methods_flat;
     const method_ids = rawMethodIDs.split(",").map(id => id.trim());
 
-    // ✅ Append fallback option
-    method_ids.push("None of these seem right");
-
     console.log("🔗 Final matched_method_ids_array:", method_ids);
     res.json({ matched_method_ids_array: method_ids });
 
@@ -181,13 +177,13 @@ app.post("/getMethodIDsForTask", async (req, res) => {
   }
 });
 
-// ✅ Route 5: Get Method Labels from Method IDs (Landbot-compatible response)
+// ✅ Route 5: Get Method Labels from Method IDs
 app.post("/getMethodLabels", async (req, res) => {
   try {
     let { method_ids } = req.body;
     console.log("📥 Received method_ids:", method_ids);
 
-    // Parse stringified arrays if needed
+    // Parse stringified array if needed
     if (typeof method_ids === "string") {
       try {
         method_ids = JSON.parse(method_ids);
@@ -201,21 +197,36 @@ app.post("/getMethodLabels", async (req, res) => {
     }
 
     if (method_ids.length === 0) {
-      return res.json({ method_labels_array: [], method_labels: [] });
+      return res.json({ matched_method_labels_array: ["None of these seem right"] });
     }
 
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
     const formula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
-    console.log("🧪 Airtable formula:", formula);
 
     const response = await axios.get(METHODS_URL, {
-      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_TOKEN}`
+      },
       params: {
         filterByFormula: formula,
-        fields: ["Title", "ID"], // Make sure this matches Airtable exactly (capital "T")
+        fields: ["Title", "ID"],
         pageSize: 100
       }
     });
+
+    const method_labels = response.data.records.map(rec => rec.fields.Title || "[Missing label]");
+
+    // ✅ Append fallback option
+    method_labels.push("None of these seem right");
+
+    console.log("🎯 Final matched_method_labels_array:", method_labels);
+    res.json({ matched_method_labels_array: method_labels });
+
+  } catch (error) {
+    console.error("🔥 Method label fetch error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to fetch method labels from Airtable" });
+  }
+});
 
     const method_labels = response.data.records.map(rec => rec.fields.Title || "[Missing label]");
     console.log("🎯 Final method_labels_array:", method_labels);
