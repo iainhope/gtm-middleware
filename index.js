@@ -133,9 +133,10 @@ app.post("/getMethodsForTask", async (req, res) => {
     const taskID = taskRecord.fields.ID;
     console.log("🎯 Matched Task ID:", taskID);
 
-    // Step 2: Use Task ID to find Methods using the flattened string field
+    // Step 2: Use Task ID to find Methods using the flattened text field
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
-    const methodFormula = `OR({task_ids_flat} = "${taskID}", FIND(",${taskID},", "," & {task_ids_flat} & ",") > 0)`;
+
+    const methodFormula = `IF({task_ids_flat}, OR({task_ids_flat} = "${taskID}", FIND(",${taskID},", "," & {task_ids_flat} & ",") > 0), FALSE)`;
     console.log("🔎 Matching methods with formula:", methodFormula);
 
     const methodResponse = await axios.get(METHODS_URL, {
