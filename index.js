@@ -101,8 +101,8 @@ app.post("/getTaskLabels", async (req, res) => {
   }
 });
 
-// ✅ Route 3: Get Method data from Task Labels (via Tasks table)
-app.post("/getMethodsForTask", async (req, res) => {
+// ✅ Route 3a: Get Task ID from Task Label (via Tasks table)
+app.post("/getTaskIDForLabel", async (req, res) => {
   try {
     const { task_label } = req.body;
     console.log("📥 Received task_label:", task_label);
@@ -111,48 +111,29 @@ app.post("/getMethodsForTask", async (req, res) => {
       return res.status(400).json({ error: "task_label must be a string" });
     }
 
-    // Step 1: Look up the Task row
     const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
 
     const taskResponse = await axios.get(TASKS_URL, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
         filterByFormula: `SEARCH("${task_label}", {Title})`,
-        fields: ["ID", "methods_flat"],
+        fields: ["ID"],
         pageSize: 1
       }
     });
 
-    const taskRecord = taskResponse.data.records[0];
-    if (!taskRecord || !taskRecord.fields.methods_flat) {
-      return res.json({ methods: [] }); // no methods linked to this task
+    const record = taskResponse.data.records[0];
+    if (!record || !record.fields.ID) {
+      return res.status(404).json({ error: "No matching task found" });
     }
 
-    const rawMethodIDs = taskRecord.fields.methods_flat;
-    const method_ids = rawMethodIDs.split(",").map(id => id.trim());
-    console.log("🔗 Method IDs for task:", method_ids);
+    const task_id = record.fields.ID;
+    console.log("🎯 Matched task_id:", task_id);
+    res.json({ task_id });
 
-    // Step 2: Get method data from Methods table
-    const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
-    const methodFormula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
-    const methodResponse = await axios.get(METHODS_URL, {
-      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
-      params: {
-        filterByFormula: methodFormula,
-        fields: ["method_label", "modality_label"],
-        pageSize: 100
-      }
-    });
-
-    const methods = methodResponse.data.records.map((rec) => ({
-      method_label: rec.fields.method_label,
-      modality_label: rec.fields.modality_label
-    }));
-
-    res.json({ methods });
   } catch (error) {
-    console.error("🔥 Method fetch error:", error.message);
-    res.status(500).json({ error: "Failed to fetch methods for task" });
+    console.error("🔥 Task ID fetch error:", error.message);
+    res.status(500).json({ error: "Failed to fetch task ID from label" });
   }
 });
 
