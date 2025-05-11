@@ -214,7 +214,12 @@ app.post("/getMethodLabels", async (req, res) => {
       }
     });
 
-    const method_labels = response.data.records.map(rec => rec.fields.Title || "[Missing label]");
+    // Sanitize and shorten titles
+    const method_labels = response.data.records.map(rec => {
+      const raw = rec.fields.Title || "[Missing label]";
+      return raw.replace(/[\n\r\t]/g, "").substring(0, 80);
+    });
+
     method_labels.push("None of these seem right");
 
     console.log("🎯 Final matched_method_labels_array:", method_labels);
