@@ -59,6 +59,7 @@ app.post("/getTaskIDsForGoal", async (req, res) => {
 });
 
 // ✅ Route 2: Get Task Labels from Task IDs
+console.log("📥 Received task_ids:", task_ids);
 app.post("/getTaskLabels", async (req, res) => {
   try {
     let { task_ids } = req.body;
