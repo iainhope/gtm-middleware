@@ -101,44 +101,39 @@ app.post("/getTaskLabels", async (req, res) => {
   }
 });
 
-// ✅ Route 3: Get Method data from Task Labels
+// ✅ Route 3: Get Method data from Task Labels (via Tasks table)
 app.post("/getMethodsForTask", async (req, res) => {
   try {
-    let { task_label } = req.body;
+    const { task_label } = req.body;
     console.log("📥 Received task_label:", task_label);
 
     if (!task_label || typeof task_label !== "string") {
       return res.status(400).json({ error: "task_label must be a string" });
     }
 
+    // Step 1: Look up the Task row
     const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
-
-    // Step 1: Look up the Task ID from the Task Label
     const taskResponse = await axios.get(TASKS_URL, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
         filterByFormula: `SEARCH("${task_label}", {Title})`,
-        fields: ["ID"],
+        fields: ["Methods"],
         pageSize: 1
       }
     });
 
-    console.log("🧾 Airtable task lookup response:", taskResponse.data.records);
-
     const taskRecord = taskResponse.data.records[0];
-    if (!taskRecord) {
-      return res.status(404).json({ error: "Task not found" });
+    if (!taskRecord || !taskRecord.fields.Methods) {
+      return res.json({ methods: [] }); // no methods linked to this task
     }
 
-    const taskID = taskRecord.fields.ID;
-    console.log("🎯 Matched Task ID:", taskID);
+    const rawMethodIDs = taskRecord.fields.Methods;
+    const method_ids = rawMethodIDs.split(",").map(id => id.trim());
+    console.log("🔗 Method IDs for task:", method_ids);
 
-    // Step 2: Use Task ID to find Methods using the flattened text field
+    // Step 2: Get method data from Methods table
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
-
-    const methodFormula = `FIND(",${taskID},", "," & {task_ids_flat} & ",") > 0`;
-    console.log("🔎 Matching methods with formula:", methodFormula);
-
+    const methodFormula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
     const methodResponse = await axios.get(METHODS_URL, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
