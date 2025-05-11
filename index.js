@@ -215,8 +215,6 @@ app.post("/getMethodLabels", async (req, res) => {
     });
 
     const method_labels = response.data.records.map(rec => rec.fields.Title || "[Missing label]");
-
-    // ✅ Append fallback option
     method_labels.push("None of these seem right");
 
     console.log("🎯 Final matched_method_labels_array:", method_labels);
@@ -225,21 +223,6 @@ app.post("/getMethodLabels", async (req, res) => {
   } catch (error) {
     console.error("🔥 Method label fetch error:", error.response?.data || error.message);
     res.status(500).json({ error: "Failed to fetch method labels from Airtable" });
-  }
-});
-
-    const method_labels = response.data.records.map(rec => rec.fields.Title || "[Missing label]");
-    console.log("🎯 Final method_labels_array:", method_labels);
-
-    // Return both formats for Landbot compatibility
-    res.json({
-      method_labels_array: method_labels,
-      method_labels: method_labels
-    });
-
-  } catch (error) {
-    console.error("🔥 Method label fetch error:", error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to fetch method labels" });
   }
 });
 
