@@ -1,39 +1,42 @@
 const axios = require("axios");
 
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
-const BASE_ID = "appZl7uUy4NeWQ0Ho"; // Your actual base ID
-const TABLE_NAME = "Goals";
-const FIELD_NAME = "ID (from Task Links)";
+const BASE_ID = "appZl7uUy4NeWQ0Ho"; // Replace with your actual base ID
+const GOALS_TABLE = "Goals";
+const TASKS_TABLE = "Tasks";
 
-const AIRTABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`;
-
-const getTasksForGoal = async (goal_id) => {
+const getTaskIDsForGoal = async (goal_id) => {
   try {
-    const formula = `{ID} = '${goal_id}'`;
-    const response = await axios.get(AIRTABLE_URL, {
-      headers: {
-        Authorization: `Bearer ${AIRTABLE_TOKEN}`,
-      },
-      params: {
-        filterByFormula: formula,
-        fields: [FIELD_NAME],
-        pageSize: 1,
-      },
-    });
+    const formula = `{ID} = "${goal_id}"`;
+
+    const response = await axios.get(
+      `https://api.airtable.com/v0/${BASE_ID}/${GOALS_TABLE}`,
+      {
+        headers: {
+          Authorization: `Bearer ${AIRTABLE_TOKEN}`,
+        },
+        params: {
+          filterByFormula: formula,
+          fields: ["ID (from Task Links)"],
+          pageSize: 1,
+        },
+      }
+    );
 
     const match = response.data.records[0];
-    if (!match) return [];
+    if (!match) {
+      console.warn("No goal found for ID:", goal_id);
+      return [];
+    }
 
-    const raw = match.fields[FIELD_NAME];
-    if (!raw || typeof raw !== "string") return [];
+    const raw = match.fields["ID (from Task Links)"];
+    console.log("✅ Airtable raw field value:", raw);
 
-    // Split and trim spaces to get clean task IDs
-    const task_ids = raw.split(",").map((s) => s.trim());
-    return task_ids;
+    return Array.isArray(raw) ? raw : [];
   } catch (error) {
-    console.error("🔥 Airtable error:", error.response?.data || error.message);
-    return null;
+    console.error("🔥 Airtable error:", error.message || error);
+    return [];
   }
 };
 
-module.exports = { getTasksForGoal };
+module.exports = { getTaskIDsForGoal };
