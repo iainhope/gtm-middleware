@@ -171,49 +171,39 @@ app.post("/getMethodIDsForTask", async (req, res) => {
   }
 });
 
-// ✅ Route 5: Get Method Labels + Modalities from Method IDs (filtered in JS)
 app.post("/getMethodLabels", async (req, res) => {
   try {
     let { method_ids } = req.body;
     console.log("📥 Received method_ids:", method_ids);
+
+    if (typeof method_ids === "string") {
+      method_ids = JSON.parse(method_ids);
+    }
 
     if (!Array.isArray(method_ids)) {
       return res.status(400).json({ error: "method_ids must be an array" });
     }
 
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
+    const formula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
 
-    // Get ALL methods (up to 100 for now)
     const response = await axios.get(METHODS_URL, {
-      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_TOKEN}`
+      },
       params: {
-        fields: ["ID", "title", "To link to Reference id"],
+        filterByFormula: formula,
+        fields: ["title", "ID"],
         pageSize: 100
       }
     });
 
-    const hardcodedModalities = {
-      REF001: "drawn from Person-Centred Therapy",
-      REF002: "drawn from Cognitive Behavioural Therapy",
-      REF003: "drawn from Narrative Therapy",
-      REF004: "drawn from Acceptance and Commitment Therapy"
-    };
-
-    const methods = response.data.records
-      .filter(rec => method_ids.includes(rec.fields.ID))
-      .map(rec => {
-        const label = rec.fields.title || "[Missing label]";
-        const ref = rec.fields["To link to Reference id"];
-        const modality = hardcodedModalities[ref] || "drawn from an unknown approach";
-        return `${label} (${modality})`;
-      });
-
-    console.log("🎯 Final method_labels_array:", methods);
-    res.json({ method_labels_array: methods });
+    const method_labels = response.data.records.map(rec => rec.fields.title);
+    res.json({ method_labels_array: method_labels });
 
   } catch (error) {
     console.error("🔥 Method label fetch error:", error.message);
-    res.status(500).json({ error: "Failed to fetch method labels" });
+    res.status(500).json({ error: "Failed to fetch method labels from Airtable" });
   }
 });
 
