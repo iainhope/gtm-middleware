@@ -171,7 +171,7 @@ app.post("/getMethodIDsForTask", async (req, res) => {
   }
 });
 
-// ✅ Route 5: Get Method Labels from Method IDs (Airtable formula fix)
+// ✅ Route 5: Get Method Labels from Method IDs (Airtable case sensitivity fix)
 app.post("/getMethodLabels", async (req, res) => {
   try {
     let { method_ids } = req.body;
@@ -196,7 +196,6 @@ app.post("/getMethodLabels", async (req, res) => {
 
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
 
-    // Airtable only allows a limited formula length (~10000 chars), but we're well below that
     const formulaParts = method_ids.map(id => `{ID} = "${id}"`);
     const formula = `OR(${formulaParts.join(",")})`;
     console.log("🧪 Airtable formula:", formula);
@@ -207,12 +206,12 @@ app.post("/getMethodLabels", async (req, res) => {
       },
       params: {
         filterByFormula: formula,
-        fields: ["title", "ID"],
+        fields: ["Title", "ID"],  // ← case-sensitive fix
         pageSize: 100
       }
     });
 
-    const method_labels = response.data.records.map(rec => rec.fields.title || "[Missing label]");
+    const method_labels = response.data.records.map(rec => rec.fields.Title || "[Missing label]");
     console.log("🎯 Final method_labels_array:", method_labels);
     res.json({ method_labels_array: method_labels });
 
