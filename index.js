@@ -1,9 +1,15 @@
 const express = require("express");
-const { getTasksForGoal } = require("./airtable");
-
+const axios = require("axios");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
+const BASE_ID = "appZl7uUy4NeWQ0Ho";
+const TABLE_NAME = "Goals";
+const AIRTABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`;
+const FIELD_NAME = "ID (from Task Links)";
+
+// Middleware
 app.use(express.json());
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -11,23 +17,80 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ POST /getTaskIDsForGoal
+// ✅ Route 1: Get Task IDs for a Goal
 app.post("/getTaskIDsForGoal", async (req, res) => {
-  const { goal_id } = req.body;
+  try {
+    const { goal_id } = req.body;
+    if (!goal_id) return res.status(400).json({ error: "Missing goal_id" });
 
-  if (!goal_id) {
-    return res.status(400).json({ error: "Missing goal_id" });
+    const formula = `{ID} = "${goal_id}"`;
+
+    const response = await axios.get(AIRTABLE_URL, {
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_TOKEN}`
+      },
+      params: {
+        filterByFormula: formula,
+        fields: [FIELD_NAME],
+        pageSize: 1
+      }
+    });
+
+    const match = response.data.records[0];
+    if (!match || !match.fields[FIELD_NAME]) {
+      return res.json({ task_ids: [] });
+    }
+
+    const rawValue = match.fields[FIELD_NAME];
+
+    // Ensure it is returned as an array
+    const task_ids = Array.isArray(rawValue)
+      ? rawValue
+      : typeof rawValue === "string"
+      ? rawValue.split(",").map((id) => id.trim())
+      : [];
+
+    console.log("✅ Airtable raw field value:", task_ids);
+    res.json({ task_ids });
+  } catch (error) {
+    console.error("🔥 Airtable error:", error.message);
+    res.status(500).json({ error: "Failed to fetch tasks from Airtable" });
   }
-
-  const task_ids = await getTasksForGoal(goal_id);
-
-  if (task_ids === null) {
-    return res.status(500).json({ error: "Failed to fetch tasks from Airtable" });
-  }
-
-  res.json({ task_ids });
 });
 
+// ✅ Route 2: Get Task Labels from Task IDs
+app.post("/getTaskLabels", async (req, res) => {
+  try {
+    const { task_ids } = req.body;
+    if (!Array.isArray(task_ids)) {
+      return res.status(400).json({ error: "task_ids must be an array" });
+    }
+
+    const taskTableURL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
+    const formula = `OR(${task_ids.map((id) => `{ID} = "${id}"`).join(",")})`;
+
+    const response = await axios.get(taskTableURL, {
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_TOKEN}`
+      },
+      params: {
+        filterByFormula: formula,
+        fields: ["Title", "ID"],
+        pageSize: 100
+      }
+    });
+
+    const matchedLabels = response.data.records.map(
+      (record) => record.fields.Title
+    );
+    res.json({ task_labels: matchedLabels });
+  } catch (error) {
+    console.error("🔥 Airtable error:", error.message);
+    res.status(500).json({ error: "Failed to fetch task labels from Airtable" });
+  }
+});
+
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
