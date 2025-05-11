@@ -135,12 +135,12 @@ app.post("/getMethodsForTask", async (req, res) => {
     // Step 2: Use Task ID to find Methods
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
     const methodResponse = await axios.get(METHODS_URL, {
-  headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
-  params: {
-    filterByFormula: `FIND("${taskID}", "{ID (from Task Links)}")`,
-    fields: ["method_label", "modality_label"],
-    pageSize: 100
-  }
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
+      params: {
+        filterByFormula: `FIND("${taskID}", {ID (from Task Links)})`,
+        fields: ["method_label", "modality_label"],
+        pageSize: 100
+      }
     });
 
     const methods = methodResponse.data.records.map((rec) => ({
