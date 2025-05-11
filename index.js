@@ -136,7 +136,7 @@ app.post("/getMethodsForTask", async (req, res) => {
     const methodResponse = await axios.get(METHODS_URL, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
-        filterByFormula: `FIND("${ID (from Task Links)}", {linked_task_ids})`,
+        filterByFormula: `FIND("${taskID}", {ID (from Task Links)})`,
         fields: ["method_label", "modality_label"],
         pageSize: 100
       }
