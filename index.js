@@ -107,12 +107,7 @@ app.post("/getTaskIDForLabel", async (req, res) => {
     const { task_label } = req.body;
     console.log("📥 Received task_label:", task_label);
 
-    if (!task_label || typeof task_label !== "string") {
-      return res.status(400).json({ error: "task_label must be a string" });
-    }
-
     const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
-
     const taskResponse = await axios.get(TASKS_URL, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
@@ -122,18 +117,20 @@ app.post("/getTaskIDForLabel", async (req, res) => {
       }
     });
 
-    const record = taskResponse.data.records[0];
-    if (!record || !record.fields.ID) {
-      return res.status(404).json({ error: "No matching task found" });
+    const taskRecord = taskResponse.data.records[0];
+    if (!taskRecord) {
+      return res.status(404).json({ error: "Task not found" });
     }
 
-    const task_id = record.fields.ID;
-    console.log("🎯 Matched task_id:", task_id);
-    res.json({ task_id });
+    const taskID = taskRecord.fields.ID;
+    console.log("🎯 Matched Task ID:", taskID);
+
+    // 🔁 Return it with the exact key Landbot expects
+    res.json({ selected_task_id_1: taskID });
 
   } catch (error) {
     console.error("🔥 Task ID fetch error:", error.message);
-    res.status(500).json({ error: "Failed to fetch task ID from label" });
+    res.status(500).json({ error: "Failed to fetch task ID" });
   }
 });
 
