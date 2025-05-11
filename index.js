@@ -61,15 +61,27 @@ app.post("/getTaskIDsForGoal", async (req, res) => {
 // ✅ Route 2: Get Task Labels from Task IDs
 app.post("/getTaskLabels", async (req, res) => {
   try {
-    const { task_ids } = req.body;
+    let { task_ids } = req.body;
+
+    // 🔁 If it's a string (as from Landbot), parse it
+    if (typeof task_ids === "string") {
+      try {
+        task_ids = JSON.parse(task_ids);
+      } catch (e) {
+        return res.status(400).json({ error: "task_ids must be a valid JSON array or stringified array" });
+      }
+    }
+
     if (!Array.isArray(task_ids)) {
       return res.status(400).json({ error: "task_ids must be an array" });
     }
 
-    const taskTableURL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
-    const formula = `OR(${task_ids.map((id) => `{ID} = "${id}"`).join(",")})`;
+    const BASE_ID = "appZl7uUy4NeWQ0Ho";
+    const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
+    const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
+    const formula = `OR(${task_ids.map(id => `{ID} = "${id}"`).join(",")})`;
 
-    const response = await axios.get(taskTableURL, {
+    const response = await axios.get(TASKS_URL, {
       headers: {
         Authorization: `Bearer ${AIRTABLE_TOKEN}`
       },
@@ -80,12 +92,10 @@ app.post("/getTaskLabels", async (req, res) => {
       }
     });
 
-    const matchedLabels = response.data.records.map(
-      (record) => record.fields.Title
-    );
-    res.json({ task_labels: matchedLabels });
+    const task_labels = response.data.records.map(record => record.fields.Title);
+    res.json({ task_labels });
   } catch (error) {
-    console.error("🔥 Airtable error:", error.message);
+    console.error("🔥 Airtable label fetch error:", error.message);
     res.status(500).json({ error: "Failed to fetch task labels from Airtable" });
   }
 });
