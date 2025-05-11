@@ -101,6 +101,59 @@ app.post("/getTaskLabels", async (req, res) => {
   }
 });
 
+// ✅ Route 3: Get Method data from Task Labels
+app.post("/getMethodsForTask", async (req, res) => {
+  try {
+    let { task_label } = req.body;
+
+    if (!task_label || typeof task_label !== "string") {
+      return res.status(400).json({ error: "task_label must be a string" });
+    }
+
+    const BASE_ID = "appZl7uUy4NeWQ0Ho";
+    const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
+
+    // Step 1: Look up the Task ID
+    const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
+    const taskResponse = await axios.get(TASKS_URL, {
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
+      params: {
+        filterByFormula: `{Title} = "${task_label}"`,
+        fields: ["ID"],
+        pageSize: 1
+      }
+    });
+
+    const taskRecord = taskResponse.data.records[0];
+    if (!taskRecord) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    const taskID = taskRecord.fields.ID;
+
+    // Step 2: Use Task ID to find Methods
+    const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
+    const methodResponse = await axios.get(METHODS_URL, {
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
+      params: {
+        filterByFormula: `FIND("${taskID}", {linked_task_ids})`,
+        fields: ["method_label", "modality_label"],
+        pageSize: 100
+      }
+    });
+
+    const methods = methodResponse.data.records.map((rec) => ({
+      method_label: rec.fields.method_label,
+      modality_label: rec.fields.modality_label
+    }));
+
+    res.json({ methods });
+  } catch (error) {
+    console.error("🔥 Method fetch error:", error.message);
+    res.status(500).json({ error: "Failed to fetch methods for task" });
+  }
+});
+
 // ✅ Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
