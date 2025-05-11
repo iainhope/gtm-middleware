@@ -113,21 +113,22 @@ app.post("/getMethodsForTask", async (req, res) => {
 
     // Step 1: Look up the Task row
     const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
+
     const taskResponse = await axios.get(TASKS_URL, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
         filterByFormula: `SEARCH("${task_label}", {Title})`,
-        fields: ["Methods"],
+        fields: ["ID", "methods_flat"],
         pageSize: 1
       }
     });
 
     const taskRecord = taskResponse.data.records[0];
-    if (!taskRecord || !taskRecord.fields.Methods) {
+    if (!taskRecord || !taskRecord.fields.methods_flat) {
       return res.json({ methods: [] }); // no methods linked to this task
     }
 
-    const rawMethodIDs = taskRecord.fields.Methods;
+    const rawMethodIDs = taskRecord.fields.methods_flat;
     const method_ids = rawMethodIDs.split(",").map(id => id.trim());
     console.log("🔗 Method IDs for task:", method_ids);
 
