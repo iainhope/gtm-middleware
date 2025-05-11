@@ -231,6 +231,31 @@ app.post("/getMethodLabels", async (req, res) => {
   }
 });
 
+// ✅ Route 6: Generate downloadable summary file
+const fs = require('fs');
+const path = require('path');
+
+app.post("/generateSummary", async (req, res) => {
+  try {
+    const { summary_text } = req.body;
+
+    if (!summary_text || typeof summary_text !== 'string') {
+      return res.status(400).json({ error: "Missing or invalid summary_text" });
+    }
+
+    const filePath = path.join(__dirname, 'public', 'gtm_summary.txt');
+    fs.writeFileSync(filePath, summary_text);
+
+    // Adjust if you're using Render static file hosting
+    const publicUrl = `https://YOUR_RENDER_DOMAIN/gtm_summary.txt`;
+
+    res.json({ file_url: publicUrl });
+  } catch (error) {
+    console.error("🔥 File generation error:", error.message);
+    res.status(500).json({ error: "Failed to generate file" });
+  }
+});
+
 // ✅ Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
