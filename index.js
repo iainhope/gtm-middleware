@@ -171,6 +171,57 @@ app.post("/getMethodIDsForTask", async (req, res) => {
   }
 });
 
+// ✅ Route 5: Get Method Labels and Modality Info
+app.post("/getMethodData", async (req, res) => {
+  try {
+    let { method_ids } = req.body;
+    console.log("📥 Received method_ids:", method_ids);
+
+    // Parse stringified array if necessary
+    if (typeof method_ids === "string") {
+      try {
+        method_ids = JSON.parse(method_ids);
+      } catch (e) {
+        return res.status(400).json({ error: "method_ids must be a valid JSON array or stringified array" });
+      }
+    }
+
+    if (!Array.isArray(method_ids)) {
+      return res.status(400).json({ error: "method_ids must be an array" });
+    }
+
+    const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
+    const formula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
+
+    const response = await axios.get(METHODS_URL, {
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
+      params: {
+        filterByFormula: formula,
+        fields: ["method_label", "modality_reference"],
+        pageSize: 100
+      }
+    });
+
+    const modalityMap = {
+      "REF001": "drawn from person-centred therapy",
+      "REF002": "drawn from CBT (Cognitive Behavioural Therapy)",
+      "REF003": "drawn from narrative therapy",
+      "REF004": "drawn from ACT (Acceptance and Commitment Therapy)"
+    };
+
+    const buttons = response.data.records.map((rec) => {
+      const label = rec.fields.method_label || "Unnamed method";
+      const modality = modalityMap[rec.fields.modality_reference] || "drawn from an unknown modality";
+      return `${label} — ${modality}`;
+    });
+
+    console.log("🎯 Button labels:", buttons);
+    res.json({ buttons });
+  } catch (error) {
+    console.error("🔥 Method label fetch error:", error.message);
+    res.status(500).json({ error: "Failed to fetch method labels from Airtable" });
+  }
+});
 
 // ✅ Start server
 app.listen(PORT, () => {
