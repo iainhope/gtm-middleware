@@ -114,23 +114,30 @@ app.post("/getMethodsForTask", async (req, res) => {
     const BASE_ID = "appZl7uUy4NeWQ0Ho";
     const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 
-    // Step 1: Look up the Task ID
-    const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
-    const taskResponse = await axios.get(TASKS_URL, {
-      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
-      params: {
-        filterByFormula: `SEARCH("${task_label}", {Title})`,
-        fields: ["ID"],
-        pageSize: 1
-      }
-    });
+    // Step 1: Look up the Task ID from the Task Label
+const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
 
-    const taskRecord = taskResponse.data.records[0];
-    if (!taskRecord) {
-      return res.status(404).json({ error: "Task not found" });
-    }
+const taskResponse = await axios.get(TASKS_URL, {
+  headers: {
+    Authorization: `Bearer ${AIRTABLE_TOKEN}`
+  },
+  params: {
+    filterByFormula: `SEARCH("${task_label}", {Title})`,
+    fields: ["ID"],
+    pageSize: 1
+  }
+});
 
-    const taskID = taskRecord.fields.ID;
+// 🔍 Log the raw Airtable response
+console.log("🧾 Airtable task lookup response:", taskResponse.data.records);
+
+const taskRecord = taskResponse.data.records[0];
+if (!taskRecord) {
+  return res.status(404).json({ error: "Task not found" });
+}
+
+const taskID = taskRecord.fields.ID;
+console.log("🎯 Matched Task ID:", taskID);
 
     // Step 2: Use Task ID to find Methods
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
