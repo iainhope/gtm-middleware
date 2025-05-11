@@ -94,14 +94,20 @@ app.post("/getTaskLabels", async (req, res) => {
     });
 
     const task_labels = response.data.records.map(record => record.fields.Title);
-    res.json({ task_labels });
+
+    // ✅ Append fallback option
+    task_labels.push("None of these seem right");
+
+    console.log("🎯 Final matched_task_labels_array:", task_labels);
+    res.json({ matched_task_labels_array: task_labels });
+
   } catch (error) {
-    console.error("🔥 Airtable label fetch error:", error.message);
+    console.error("🔥 Task label fetch error:", error.response?.data || error.message);
     res.status(500).json({ error: "Failed to fetch task labels from Airtable" });
   }
 });
 
-// ✅ Route 3a: Get Task ID from Task Label (via Tasks table)
+// ✅ Route 3 Get Task ID from Task Label (via Tasks table)
 app.post("/getTaskIDForLabel", async (req, res) => {
   try {
     const { task_label } = req.body;
