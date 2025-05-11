@@ -171,54 +171,70 @@ app.post("/getMethodIDsForTask", async (req, res) => {
   }
 });
 
-// ✅ Route 5: Get Method Label and Modality (for a single Method ID)
-app.post("/getMethodLabel", async (req, res) => {
+// ✅ Route 5: Get Method Labels and Modalities (from Method IDs)
+app.post("/getMethodLabels", async (req, res) => {
   try {
-    const { method_id } = req.body;
-    console.log("📥 Received method_id:", method_id);
+    let { method_ids } = req.body;
+    console.log("📥 Received method_ids:", method_ids);
 
-    if (!method_id || typeof method_id !== "string") {
-      return res.status(400).json({ error: "method_id must be a string" });
+    // 🔁 Parse if coming in as a stringified array
+    if (typeof method_ids === "string") {
+      try {
+        method_ids = JSON.parse(method_ids);
+      } catch (e) {
+        return res.status(400).json({ error: "method_ids must be a valid JSON array or stringified array" });
+      }
     }
 
-    const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
+    if (!Array.isArray(method_ids)) {
+      return res.status(400).json({ error: "method_ids must be an array" });
+    }
 
-    const formula = `{ID} = "${method_id}"`;
+    // 🔎 Build formula to match multiple method IDs
+    const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
+    const methodFormula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
+    console.log("🧪 Method formula:", methodFormula);
+
+    // 🔍 Get method records
     const response = await axios.get(METHODS_URL, {
-      headers: {
-        Authorization: `Bearer ${AIRTABLE_TOKEN}`
-      },
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
       params: {
-        filterByFormula: formula,
-        fields: ["method_label", "modality_ref"],
-        pageSize: 1
+        filterByFormula: methodFormula,
+        fields: ["ID", "Title", "To link to Reference id"],
+        pageSize: 100
       }
     });
 
-    const record = response.data.records[0];
-    if (!record) {
-      return res.status(404).json({ error: "Method not found" });
-    }
+    // 🔧 Format with hardcoded modality labels
+    const methods = response.data.records.map((record) => {
+      const label = record.fields.Title;
+      const ref = record.fields["To link to Reference id"];
+      let modality = "";
 
-    const label = record.fields.method_label || "Unknown method";
-    const ref = record.fields.modality_ref || "REF_UNKNOWN";
+      switch (ref) {
+        case "REF001":
+          modality = "Drawn from Person-Centred Therapy";
+          break;
+        case "REF002":
+          modality = "Drawn from Cognitive Behavioural Therapy (CBT)";
+          break;
+        case "REF003":
+          modality = "Drawn from Narrative Therapy";
+          break;
+        case "REF004":
+          modality = "Drawn from Acceptance and Commitment Therapy (ACT)";
+          break;
+        default:
+          modality = "Modality reference not found";
+      }
 
-    // Hard-coded modality mapping
-    const modalityLookup = {
-      REF001: "drawn from person-centred therapy",
-      REF002: "drawn from CBT (Cognitive Behavioural Therapy)",
-      REF003: "drawn from narrative therapy",
-      REF004: "drawn from ACT (Acceptance and Commitment Therapy)"
-    };
+      return `${label} · ${modality}`;
+    });
 
-    const modalityText = modalityLookup[ref] || "from an unknown modality";
-    const combined = `${label} – ${modalityText}`;
-
-    res.json({ method: combined });
-
+    res.json({ method_labels: methods });
   } catch (error) {
-    console.error("🔥 Single method fetch error:", error.message);
-    res.status(500).json({ error: "Failed to fetch method label" });
+    console.error("🔥 Method label fetch error:", error.message);
+    res.status(500).json({ error: "Failed to fetch method labels" });
   }
 });
 
