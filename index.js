@@ -231,7 +231,7 @@ app.post("/getMethodLabels", async (req, res) => {
       return `${label} · ${modality}`;
     });
 
-    res.json({ method_labels: methods });
+    res.json({ method_labels });
   } catch (error) {
     console.error("🔥 Method label fetch error:", error.message);
     res.status(500).json({ error: "Failed to fetch method labels" });
