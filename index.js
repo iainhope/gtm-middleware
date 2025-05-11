@@ -134,6 +134,44 @@ app.post("/getTaskIDForLabel", async (req, res) => {
   }
 });
 
+  // ✅ Route 4: Get Method IDs for a Task ID
+app.post("/getMethodIDsForTask", async (req, res) => {
+  try {
+    const { task_id } = req.body;
+    console.log("📥 Received task_id:", task_id);
+
+    if (!task_id || typeof task_id !== "string") {
+      return res.status(400).json({ error: "task_id must be a string" });
+    }
+
+    // Step 1: Look up the Task row by ID
+    const TASKS_URL = `https://api.airtable.com/v0/${BASE_ID}/Tasks`;
+    const taskResponse = await axios.get(TASKS_URL, {
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` },
+      params: {
+        filterByFormula: `{ID} = "${task_id}"`,
+        fields: ["methods_flat"],
+        pageSize: 1
+      }
+    });
+
+    const taskRecord = taskResponse.data.records[0];
+    if (!taskRecord || !taskRecord.fields.methods_flat) {
+      return res.json({ method_ids: [] });
+    }
+
+    const rawMethodIDs = taskRecord.fields.methods_flat;
+    const method_ids = rawMethodIDs.split(",").map(id => id.trim());
+    console.log("🔗 Method IDs:", method_ids);
+
+    res.json({ method_ids });
+  } catch (error) {
+    console.error("🔥 Method ID fetch error:", error.message);
+    res.status(500).json({ error: "Failed to fetch method IDs from Airtable" });
+  }
+});
+
+
 // ✅ Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
