@@ -171,21 +171,35 @@ app.post("/getMethodIDsForTask", async (req, res) => {
   }
 });
 
+// ✅ Route 5: Get Method Labels from Method IDs (Airtable formula fix)
 app.post("/getMethodLabels", async (req, res) => {
   try {
     let { method_ids } = req.body;
     console.log("📥 Received method_ids:", method_ids);
 
+    // Support stringified arrays from Landbot
     if (typeof method_ids === "string") {
-      method_ids = JSON.parse(method_ids);
+      try {
+        method_ids = JSON.parse(method_ids);
+      } catch (e) {
+        return res.status(400).json({ error: "method_ids must be a valid JSON array or stringified array" });
+      }
     }
 
     if (!Array.isArray(method_ids)) {
       return res.status(400).json({ error: "method_ids must be an array" });
     }
 
+    if (method_ids.length === 0) {
+      return res.json({ method_labels_array: [] });
+    }
+
     const METHODS_URL = `https://api.airtable.com/v0/${BASE_ID}/Methods`;
-    const formula = `OR(${method_ids.map(id => `{ID} = "${id}"`).join(",")})`;
+
+    // Airtable only allows a limited formula length (~10000 chars), but we're well below that
+    const formulaParts = method_ids.map(id => `{ID} = "${id}"`);
+    const formula = `OR(${formulaParts.join(",")})`;
+    console.log("🧪 Airtable formula:", formula);
 
     const response = await axios.get(METHODS_URL, {
       headers: {
@@ -198,12 +212,13 @@ app.post("/getMethodLabels", async (req, res) => {
       }
     });
 
-    const method_labels = response.data.records.map(rec => rec.fields.title);
+    const method_labels = response.data.records.map(rec => rec.fields.title || "[Missing label]");
+    console.log("🎯 Final method_labels_array:", method_labels);
     res.json({ method_labels_array: method_labels });
 
   } catch (error) {
-    console.error("🔥 Method label fetch error:", error.message);
-    res.status(500).json({ error: "Failed to fetch method labels from Airtable" });
+    console.error("🔥 Method label fetch error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to fetch method labels" });
   }
 });
 
