@@ -105,6 +105,7 @@ app.post("/getTaskLabels", async (req, res) => {
 app.post("/getMethodsForTask", async (req, res) => {
   try {
     let { task_label } = req.body;
+    console.log("📥 Received task_label:", task_label);
 
     if (!task_label || typeof task_label !== "string") {
       return res.status(400).json({ error: "task_label must be a string" });
